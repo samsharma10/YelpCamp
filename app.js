@@ -1,69 +1,80 @@
-var express     = require("express"),
-    app         = express(),
-    bodyParser  = require("body-parser"),
-    mongoose    = require("mongoose"),
-    passport    = require("passport"),
-    cookieParser = require("cookie-parser"),
+require('dotenv').config()
+
+var express = require("express"),
+    app = express(),
+    bodyParser = require("body-parser"),
+    mongoose = require("mongoose"),
+    flash = require("connect-flash"),
+    passport = require("passport"),
     LocalStrategy = require("passport-local"),
-    flash        = require("connect-flash"),
-    Campground  = require("./models/campground"),
-    Comment     = require("./models/comment"),
-    User        = require("./models/user"),
-    session = require("express-session"),
-    seedDB      = require("./seeds"),
-    methodOverride = require("method-override");
-// configure dotenv
-require('dotenv').load();
+    methodOverride = require("method-override"),
+    passportLocalMongoose = require("passport-local-mongoose"),
+    expressSession = require("express-session"),
+    async = require("async"),
+    nodemailer = require("nodemailer"),
+    crypto = require("crypto"),
+    Campground = require("./models/campgrounds.js"),
+    Comment = require("./models/comment"),
+    User = require("./models/user"),
+    Notification=require("./models/notification"),
+    seedDB = require("./seeds.js")
 
 //requiring routes
-var commentRoutes    = require("./routes/comments"),
+var commentRoutes = require("./routes/comments"),
+    reviewRoutes = require("./routes/reviews"),
     campgroundRoutes = require("./routes/campgrounds"),
-    indexRoutes      = require("./routes/index")
-    
-// assign mongoose promise library and connect to database
-mongoose.Promise = global.Promise;
+    userRoutes=require("./routes/user"),
+    indexRoutes = require("./routes/index")
 
-const databaseUri = process.env.MONGODB_URI || 'mongodb+srv://SamSharma:Kobybryant24@yelpcamp.zuyfx.mongodb.net/YelpCamp?retryWrites=true&w=majority';
+var url = process.env.DATABASEURL || "mongodb+srv://SamSharma:Kobybryant24@yelpcamp.zuyfx.mongodb.net/YelpCamp?retryWrites=true&w=majority";
+mongoose.connect(url, { useNewUrlParser: true })
+    .then(() => console.log(`Database connected`))
+    .catch(err => console.log(`Database connection error: ${err.message}`));
 
-mongoose.connect(databaseUri, { useMongoClient: true })
-      .then(() => console.log(`Database connected`))
-      .catch(err => console.log(`Database connection error: ${err.message}`));
-
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.use(express.static(__dirname + "/public"));
-app.use(methodOverride('_method'));
-app.use(cookieParser('secret'));
-//require moment
-app.locals.moment = require('moment');
-// seedDB(); //seed the database
+app.use('/public/img/', express.static('./public/img'));
+app.use(methodOverride("_method"));
+app.use(flash());
+// seedDB();   //every time we run the server seeds.js runs
 
-// PASSPORT CONFIGURATION
-app.use(require("express-session")({
-    secret: "Once again Rusty wins cutest dog!",
+
+app.locals.moment = require('moment');
+
+//PASSPORT CONFIGURATION
+app.use(expressSession({
+    secret: "This is the yelpcamp secret",
     resave: false,
     saveUninitialized: false
 }));
-
-app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
-passport.use(new LocalStrategy(User.authenticate()));
+passport.use(new LocalStrategy(User.authenticate()));//User.authenticate comes in with the passportlocalMongoose
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
-app.use(function(req, res, next){
-   res.locals.currentUser = req.user;
-   res.locals.success = req.flash('success');
-   res.locals.error = req.flash('error');
-   next();
+app.use(async function (req, res, next) {
+    res.locals.currentUser = req.user;
+    if (req.user) {
+        try {
+            let user=await User.findById(req.user._id).populate('notifications', null, { isRead: false }).exec();
+            res.locals.notifications = user.notifications.reverse();
+        } catch (err) {
+            console.log("hello");
+            console.log(err.message);
+        }
+    }
+    res.locals.error = req.flash("error");
+    res.locals.success = req.flash("success");
+    next();
 });
-
-
 app.use("/", indexRoutes);
+app.use("/", userRoutes);
 app.use("/campgrounds", campgroundRoutes);
-app.use("/campgrounds/:id/comments", commentRoutes);
+app.use("/campgrounds/:slug/comments", commentRoutes);
+app.use("/campgrounds/:slug/reviews", reviewRoutes);
 
-app.listen(process.env.PORT, process.env.IP, function(){
-   console.log("The YelpCamp Server Has Started!");
+app.listen(process.env.PORT || 3000, function () {
+    console.log("YelpCamp has started");
 });
