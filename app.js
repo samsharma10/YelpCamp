@@ -17,7 +17,7 @@ const express = require("express"),
   //Port
   port = process.env.PORT || 3000;
 
-mongoose.connect("mongodb://localhost:28015/yelp_camp_v11", {
+mongoose.connect("mongodb+srv://SamSharma:Kobybryant24@yelpcamp.zuyfx.mongodb.net/YelpCamp?retryWrites=true&w=majority", {
   useNewUrlParser: true
 });
 mongoose.set("useUnifiedTopology", true);
