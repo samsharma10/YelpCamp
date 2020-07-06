@@ -16,11 +16,12 @@ const express = require("express"),
   indexRoutes = require("./routes/index"),
   //Port
   port = process.env.PORT || 3000;
-
+  mongoose.set("useUnifiedTopology", true);
 mongoose.connect("mongodb+srv://SamSharma:Kobybryant24@yelpcamp.zuyfx.mongodb.net/YelpCamp?retryWrites=true&w=majority", {
-  useNewUrlParser: true
+  useNewUrlParser: true,
+ // "useUnifiedTopology": true
 });
-mongoose.set("useUnifiedTopology", true);
+//
 app.use(bodyParser.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.use(express.static(__dirname + "/public"));
