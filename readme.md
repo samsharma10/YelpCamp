@@ -1,1 +1,1 @@
-https://git.heroku.com/yelp-2020-camp.git
+https://yelp-2020-camp.herokuapp.com
